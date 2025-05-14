@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    /* 启用项目引用功能，允许将 TypeScript 项目拆分为更小的部分 */
+    "composite": true,
+    /* 启用增量编译，只重新编译已更改的文件以提高编译速度 */
+    "incremental": true,
+    /* 生成相应的 '.d.ts' 声明文件 */
+    "declaration": true,
+    /* 为声明文件生成源映射 */
+    "declarationMap": true,
+    /* 发生错误时不生成输出文件 */
+    "noEmitOnError": true,
+    /* 跳过所有声明文件 (*.d.ts) 的类型检查 */
+    "skipLibCheck": true,
+    /* 允许CommonJS模块和ES模块之间的互操作性，自动处理默认导入 */
+    "esModuleInterop": true,
+    /* 允许从没有设置默认导出的模块中默认导入。这并不影响代码的输出，仅为了类型检查 */
+    "allowSyntheticDefaultImports": true,
+    /* 允许导入 '.json' 模块 */
+    "resolveJsonModule": true,
+    /* 启用所有严格类型检查选项 (包括 strictNullChecks, strictFunctionTypes 等) */
+    // "strict": true,
+    /* 强制文件名使用一致的大小写 */
+    "forceConsistentCasingInFileNames": true
+  }
+}

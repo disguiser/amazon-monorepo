@@ -1,0 +1,20 @@
+{
+  /* 继承根目录的 tsconfig.base.json 配置 */
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    /* 设置编译输出的 JavaScript 版本 (ECMAScript 2020) */
+    "target": "es2020",
+    /* 指定模块代码生成标准 (CommonJS) */
+    "module": "commonjs",
+    /* 指定编译输出目录 */
+    "outDir": "dist",
+    /* 指定包含 TypeScript 源文件的根目录 */
+    "rootDir": "src",
+    /* 覆盖基础配置中的 emitDeclarationOnly，确保生成 JS 文件 */
+    "emitDeclarationOnly": false
+  },
+  /* 指定需要编译的文件或目录 */
+  "include": ["src"],
+  /* 指定编译过程中需要排除的文件或目录 */
+  "exclude": ["node_modules", "dist"]
+}

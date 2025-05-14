@@ -1,0 +1,14 @@
+{
+  /*
+   * 此文件是编辑器查找配置的入口点。
+   * 它不直接包含任何文件，而是通过 'references' 指向特定于环境的配置。
+   */
+  "files": [], // 明确表示不直接编译任何文件
+  /* 项目引用，指向其他 tsconfig 文件 */
+  "references": [
+    /* 指向应用程序代码的配置 (Vue 组件, TS/TSX 文件) */
+    { "path": "./tsconfig.app.json" },
+    /* 指向 Node.js 环境相关文件的配置 (例如 vite.config.ts) */
+    { "path": "./tsconfig.node.json" }
+  ]
+}

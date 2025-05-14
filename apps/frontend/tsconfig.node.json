@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    /* 指定增量编译信息文件的存储位置 */
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    /* 编译目标 JavaScript 版本 */
+    "target": "ES2022",
+    /* 指定包含的库文件 (ES2023 API) */
+    "lib": ["ES2023"],
+    /* 指定生成的 JavaScript 模块类型 (使用现代 ES 模块) */
+    "module": "ESNext",
+
+    /* --- Bundler Mode (适用于 Vite 等构建工具) --- */
+    /* 指定模块解析策略 ('bundler' 模式更适合现代打包工具) */
+    "moduleResolution": "bundler",
+    /* 允许导入扩展名为 .ts 的文件 (例如在 vite.config.ts 中导入其他 .ts 文件) */
+    "allowImportingTsExtensions": true,
+    /* 确保导入/导出语句在输出中保持不变 (类型导入/导出会被移除) */
+    "verbatimModuleSyntax": true,
+    /* 强制将所有文件视为模块 (而不是脚本文件) */
+    "moduleDetection": "force",
+    /* 不生成 JavaScript 输出文件 (因为 Vite 会处理编译) */
+    "noEmit": true,
+
+    "strict": true,
+    /* 报告未使用的局部变量错误 */
+    "noUnusedLocals": true,
+    /* 报告函数中未使用的参数错误 */
+    "noUnusedParameters": true,
+    /* 仅检查可擦除的语法（类型标注），适用于 `verbatimModuleSyntax` */
+    // "erasableSyntaxOnly": true,
+    /* 禁止 switch 语句中的 fall-through 情况 */
+    "noFallthroughCasesInSwitch": true,
+    /* 防止未检查的副作用导入 */
+    "noUncheckedSideEffectImports": true
+  },
+  /* 指定此配置应用于哪些文件 */
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts", // 如果有 Vitest 配置
+    "cypress.config.ts" // 如果有 Cypress 配置
+  ]
+}

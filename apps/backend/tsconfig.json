@@ -1,0 +1,43 @@
+{
+  /* 继承根目录的 tsconfig.base.json 配置 */
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    /* 编译目标 JavaScript 版本 */
+    "target": "ES2023",
+    /* 指定包含的库文件 */
+    "lib": ["ES2023", "DOM"],
+    /* 指定模块代码生成标准 (CommonJS) */
+    "module": "commonjs",
+    /* 指定编译输出目录 */
+    "outDir": "./dist",
+    /* 设置解析非相对模块名称的基本目录 */
+    "baseUrl": "./",
+    /* 生成源映射文件 (.js.map) */
+    "sourceMap": true,
+
+    /* --- NestJS Specific --- */
+    /* 编译生成的 JavaScript 代码中删除注释 */
+    "removeComments": true,
+    /* 为装饰器启用元数据支持 (用于反射) */
+    "emitDecoratorMetadata": true,
+    /* 启用对 ES7 装饰器的实验性支持 */
+    "experimentalDecorators": true,
+
+    /* --- Overrides / Specific Backend Settings --- */
+    /* 启用对 null 和 undefined 的严格类型检查 */
+    "strictNullChecks": true,
+    // "strictPropertyInitialization": false,
+    /* 不对隐含的 any 类型发出错误 (与 base 的 strict: true 冲突，按需决定是否保留) */
+    "noImplicitAny": false,
+    /* 不对函数的 this 使用严格的绑定/调用/应用检查 */
+    "strictBindCallApply": false,
+    /* 不对 switch 语句的 case 语句落空报错 */
+    "noFallthroughCasesInSwitch": false
+  },
+  /* 项目引用配置 */
+  "references": [{ "path": "../../packages/shared" }],
+  /* 指定需要包含的文件 */
+  "include": ["src/**/*"],
+  /* 排除不需要的文件 */
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
+}

@@ -1,0 +1,11 @@
+{
+  /* 继承同目录下的主 tsconfig.json 配置 */
+  "extends": "./tsconfig.json",
+  /* 在构建时排除不需要编译的文件和目录 */
+  "exclude": [
+    "node_modules" /* 排除依赖包 */,
+    "test" /* 排除测试文件目录 */,
+    "dist" /* 排除输出目录 */,
+    "**/*spec.ts" /* 排除所有 .spec.ts 测试文件 */
+  ]
+}
