@@ -52,6 +52,7 @@
         <n-card title="日志" class="log-card">
           <template #header-extra>
             <n-button quaternary type="info" @click="clearLog" size="small"> 清空日志 </n-button>
+            <a :href="excelUrl" target="_blank">下载Excel</a>
           </template>
           <div
             class="log-container"
@@ -86,6 +87,7 @@ const logMessages = ref('');
 const ids = ref('');
 const sleepSecond = ref(10);
 const chosenSite = ref('');
+const excelUrl = `${serverUrl}/download`;
 const sites = [
   {
     key: 'AU',
@@ -153,7 +155,7 @@ const startSpider = async () => {
   }
   const { taskId } = await res.json();
   // 创建 SSE 连接
-  const source = new EventSource(`${serverUrl}/${taskId}`);
+  const source = new EventSource(`${serverUrl}/sse/${taskId}`);
   eventSource.value = source;
 
   // 处理服务器消息

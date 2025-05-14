@@ -18,8 +18,8 @@ export class SpiderController {
   private readonly logger = new Logger(SpiderController.name);
   private dtoMap = new Map<string, DoSpiderDto>();
 
-  @Get(':taskId')
-  sse(@Res() res: FastifyReply, @Param('taskId') taskId: string) {
+  @Get('sse/:taskId')
+  async sse(@Res() res: FastifyReply, @Param('taskId') taskId: string) {
     // 设置 SSE 所需的响应头
     res.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -48,15 +48,17 @@ export class SpiderController {
       res.raw.end();
     });
 
+    try {
+      await this.spiderService.doSpider(this.dtoMap.get(taskId)!);
+    } catch (error) {
+      // 发送错误信息
+      res.raw.write(`data: 爬虫过程发生错误: ${error.message}\n\n`);
+      // 关闭连接
+      res.raw.end();
+    } finally {
+      this.dtoMap.delete(taskId);
+    }
     // 开始爬虫任务
-    this.spiderService
-      .doSpider(this.dtoMap.get(taskId)!)
-      .catch((error: Error) => {
-        // 发送错误信息
-        res.raw.write(`data: 爬虫过程发生错误: ${error.message}\n\n`);
-        // 关闭连接
-        res.raw.end();
-      });
   }
 
   @Post()
@@ -64,5 +66,25 @@ export class SpiderController {
     const taskId = Date.now().toString();
     this.dtoMap.set(taskId, doSpiderDto);
     return { taskId };
+  }
+
+  @Get('download')
+  async downloadExcel(@Res() reply: FastifyReply) {
+    try {
+      const fileBuffer = await this.spiderService.downloadExcel();
+      if (!fileBuffer) {
+        throw new Error('文件读取失败');
+      }
+      reply
+        .header(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ) // Excel MIME 类型
+        .header('Content-Disposition', 'attachment; filename=output.xlsx') // 强制下载并指定文件名
+        .header('Content-Length', fileBuffer.length) // 可选：文件大小
+        .send(fileBuffer); // 发送文件内容
+    } catch (error) {
+      reply.code(500).send({ error: '文件读取失败' });
+    }
   }
 }

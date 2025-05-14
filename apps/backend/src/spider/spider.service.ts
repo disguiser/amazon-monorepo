@@ -5,15 +5,15 @@ import puppeteer, {
   type ElementHandle,
 } from 'puppeteer';
 import { ConfigService } from '@nestjs/config';
-import { writeFile, copyFile, stat } from 'fs/promises';
+import { readFile, writeFile, copyFile, stat } from 'fs/promises';
 import xlsx from 'node-xlsx';
 import { removeInvisible, sleep } from './utils';
 import path from 'path';
 import { getAmazonHighResImgs } from './spider-img';
 import { DoSpiderDto } from './dto/do-spider.dto';
-import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { checkFileExists } from 'src/utils';
+import { join } from 'path';
 
 // 自定义错误类
 class ScrapingError extends Error {
@@ -29,8 +29,11 @@ export class SpiderService {
   private browser: Browser | null = null;
   private sendLog: (message: string) => void = () => {};
   private readonly logger = new Logger(SpiderService.name);
+  private excelDir: string | undefined;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {
+    this.excelDir = this.configService.get<string>('EXCEL_DIR');
+  }
 
   setProcessDone(fn) {
     this.processDone = fn;
@@ -59,7 +62,7 @@ export class SpiderService {
       // executablePath: 指定 Puppeteer 使用的 Chrome/Chromium 可执行文件的路径。
       // 如果该环境变量未设置或为空，则表达式结果为 undefined，
       // 此时 Puppeteer 将使用其默认下载并捆绑的 Chromium 版本。
-      executablePath: this.findChromeExecutablePath() ?? undefined,
+      executablePath: (await this.findChromeExecutablePath()) ?? undefined,
     });
 
     this.browser.on('disconnected', () => {
@@ -407,14 +410,13 @@ export class SpiderService {
    * @param {Array} product 产品数据数组
    */
   async addInExcel(product) {
-    const excelDir = this.configService.get<string>('EXCEL_DIR');
-    if (!excelDir) {
+    if (!this.excelDir) {
       this.logger.error('EXCEL_DIR is not set');
       return;
     }
-    const templateFilePath = path.join(excelDir, 'template.xlsx');
-    const outputFilePath = path.join(excelDir, 'output.xlsx');
-    if (!(await checkFileExists(excelDir))) {
+    const templateFilePath = path.join(this.excelDir, 'template.xlsx');
+    const outputFilePath = path.join(this.excelDir, 'output.xlsx');
+    if (!(await checkFileExists(this.excelDir))) {
       this.logger.error('template.xlsx does not exist');
       return;
     }
@@ -436,7 +438,7 @@ export class SpiderService {
     await writeFile(outputFilePath, buffer);
     this.sendLog('Excel processing complete.');
   }
-  findChromeExecutablePath(): string | null {
+  async findChromeExecutablePath(): Promise<string | null> {
     const commonPaths: string[] = [
       // 64-bit Chrome on 64-bit Windows
       'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -452,7 +454,7 @@ export class SpiderService {
     ];
 
     for (const chromePath of commonPaths) {
-      if (chromePath && fs.existsSync(chromePath)) {
+      if (chromePath && (await checkFileExists(chromePath))) {
         console.log(`Chrome found at default path: ${chromePath}`);
         return chromePath;
       }
@@ -480,7 +482,7 @@ export class SpiderService {
         const match = stdout.match(/REG_SZ\s+(.+)/);
         if (match && match[1]) {
           const chromePathFromReg = match[1].trim();
-          if (fs.existsSync(chromePathFromReg)) {
+          if (await checkFileExists(chromePathFromReg)) {
             console.log(
               `Chrome found via registry (${regPath}): ${chromePathFromReg}`,
             );
@@ -497,5 +499,14 @@ export class SpiderService {
       'Google Chrome executable not found at common locations or in registry.',
     );
     return null; // 或返回 puppeteer.executablePath() 作为备用
+  }
+
+  async downloadExcel() {
+    if (!this.excelDir) {
+      return null;
+    }
+    const filePath = join(this.excelDir, 'output.xlsx');
+    // 异步读取文件 Buffer
+    return await readFile(filePath);
   }
 }
