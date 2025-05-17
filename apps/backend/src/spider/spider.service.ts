@@ -14,6 +14,7 @@ import { DoSpiderDto } from './dto/do-spider.dto';
 import { execSync } from 'child_process';
 import { checkFileExists } from 'src/utils';
 import { join } from 'path';
+import { SpiderAsinDto } from './dto/spider-asin.dto';
 
 // 自定义错误类
 class ScrapingError extends Error {
@@ -43,11 +44,7 @@ export class SpiderService {
     this.sendLog = fn;
   }
 
-  /**
-   * 执行爬虫
-   * @param {string} url 产品页面URL
-   */
-  async doSpider({ urls, headless, sleepSecond }: DoSpiderDto) {
+  async launchBrowser(headless: boolean) {
     this.browser = await puppeteer.launch({
       headless, // false表示显示浏览器窗口
       userDataDir: this.configService.get<string>('CHROME_USER_DATA_DIR'), // 用户目录,会缓存cookie
@@ -58,7 +55,9 @@ export class SpiderService {
         // --disable-setuid-sandbox: 禁用 setuid 沙箱。
         // 通常与 --no-sandbox 一起在 Linux 系统上使用，以解决沙箱相关的启动问题。
         '--disable-setuid-sandbox',
+        '--start-maximized',
       ],
+      defaultViewport: null,
       // executablePath: 指定 Puppeteer 使用的 Chrome/Chromium 可执行文件的路径。
       // 如果该环境变量未设置或为空，则表达式结果为 undefined，
       // 此时 Puppeteer 将使用其默认下载并捆绑的 Chromium 版本。
@@ -70,16 +69,23 @@ export class SpiderService {
       this.processDone();
     });
 
-    this.sendLog('Browser launched successfully');
-
     const page = await this.browser.newPage();
-
-    // 设置视口大小
-    await page.setViewport({ width: 1280, height: 800 });
     // 设置用户代理以避免被检测为爬虫
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
     );
+    return page;
+  }
+
+  /**
+   * 执行爬虫
+   * @param {string} url 产品页面URL
+   */
+  async doSpider({ urls, headless, sleepSecond }: DoSpiderDto) {
+    const page = await this.launchBrowser(headless);
+
+    this.sendLog('Browser launched successfully');
+
     // 使用puppeteer获取动态加载的内容
     for (const url of urls) {
       this.sendLog(`------------- ${url} -------------`);
@@ -131,7 +137,7 @@ export class SpiderService {
         continue;
       }
     }
-    await this.browser.close();
+    await this.browser?.close();
   }
 
   /**
@@ -143,15 +149,15 @@ export class SpiderService {
       // 导航到目标页面
       this.sendLog('Loading page...');
       const response = await page.goto(url, {
-        waitUntil: 'networkidle2',
-        timeout: 40000,
+        waitUntil: 'domcontentloaded',
+        timeout: 50000,
       });
       if (response?.status() !== 200) {
         this.sendLog('Page load failed: ' + response?.status());
         throw new ScrapingError(null);
       }
       // 等待页面主要内容加载完成
-      await page.waitForSelector('#productTitle', { timeout: 40000 });
+      await page.waitForSelector('#productTitle');
 
       this.sendLog('Page load complete. Initiating scroll...');
 
@@ -508,5 +514,42 @@ export class SpiderService {
     const filePath = join(this.excelDir, 'output.xlsx');
     // 异步读取文件 Buffer
     return await readFile(filePath);
+  }
+
+  async spiderAsinFromStoreUrl({ headless, url }: SpiderAsinDto) {
+    const page = await this.launchBrowser(headless);
+    this.sendLog('Browser launched successfully');
+    const response = await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: 40000,
+    });
+    if (response?.status() !== 200) {
+      this.sendLog('Page load failed: ' + response?.status());
+      return;
+    }
+    let next,
+      asinArr: string[] = [];
+
+    const getAsin = async () => {
+      const pageArr = (await page.$$eval('div[role="listitem"]', (els) =>
+        els.map((e) => e.getAttribute('data-asin')),
+      )) as string[];
+      asinArr = asinArr.concat(pageArr);
+    };
+    await getAsin();
+    while (true) {
+      next = await page
+        .waitForSelector('a.s-pagination-next', { timeout: 5000 })
+        .catch(() => null);
+      if (next) {
+        await getAsin();
+        await next.click();
+      } else {
+        break;
+      }
+    }
+    this.logger.log(`Found ${asinArr.length} ASINs: ${asinArr.join(', ')}`);
+    await this.browser?.close();
+    return asinArr.join('\n');
   }
 }

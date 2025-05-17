@@ -37,11 +37,22 @@
                 <span class="unit">秒</span>
               </n-form-item>
 
+              <n-form-item>
+                <n-button
+                  type="info"
+                  @click="showModel = true"
+                  :disabled="inProcess"
+                  :loading="inProcess"
+                >
+                  {{ inProcess ? '处理中...' : '店铺链接自动获取asin' }}
+                </n-button>
+              </n-form-item>
+
               <n-input
                 v-model:value="ids"
                 type="textarea"
                 :disabled="inProcess || !chosenSite"
-                placeholder="请输入产品ID，每行一个"
+                placeholder="请输入asin，每行一个"
                 class="textarea-full-height"
               />
             </n-form>
@@ -62,6 +73,14 @@
         </n-card>
       </div>
     </div>
+    <n-modal v-model:show="showModel">
+      <n-card style="width: 600px" :bordered="false" size="huge" role="dialog" aria-modal="true">
+        <n-input-group>
+          <n-input v-model:value="storeUrl" type="text" placeholder="店铺链接" />
+          <n-button type="primary" @click="spiderAsinFromStoreUrl"> 获取 </n-button>
+        </n-input-group>
+      </n-card>
+    </n-modal>
   </div>
 </template>
 
@@ -76,12 +95,16 @@ import {
   NForm,
   NFormItem,
   NSwitch,
+  NModal,
+  NInputGroup,
   useMessage,
 } from 'naive-ui';
 
 // 初始化消息组件
 const message = useMessage();
-const serverUrl = `${import.meta.env.VITE_APP_BASE_URL}${import.meta.env.VITE_APP_BASE_API}/spider`;
+const showModel = ref(false);
+const storeUrl = ref('');
+const serverUrl = `${import.meta.env.VITE_APP_BASE_API}/spider`;
 const headless = ref(false);
 const logMessages = ref('');
 const ids = ref('');
@@ -113,14 +136,46 @@ const inProcess = ref(false);
 const logContainer = ref<HTMLDivElement | null>(null);
 const eventSource = ref<EventSource | null>(null);
 
+const spiderAsinFromStoreUrl = async () => {
+  if (!storeUrl.value.trim()) {
+    message.warning('请输入店铺链接');
+    return;
+  }
+  try {
+    inProcess.value = true;
+    const res = await fetch(`${serverUrl}/spiderAsinFromStoreUrl`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        headless: headless.value,
+        url: storeUrl.value,
+      }),
+    });
+
+    inProcess.value = false;
+    if (res.ok) {
+      ids.value = await res.text();
+      message.success('ASIN 获取成功！');
+      showModel.value = false; // 关闭模态框
+    } else {
+      const errorText = await res.text();
+      message.error(`获取ASIN失败: ${res.status} - ${errorText || '未知错误'}`);
+    }
+  } catch (error: any) {
+    message.error(`请求失败: ${error.message}`);
+  }
+};
 // 发送消息到后端
 const startSpider = async () => {
   if (!ids.value.trim()) {
     message.warning('请输入至少一个产品ID');
     return;
   }
-
-  const urlArr = Array.from(new Set(ids.value.trim().split('\n')))
+  const set = new Set(ids.value.trim().split('\n'));
+  ids.value = Array.from(set).join(',');
+  const urlArr = Array.from(set)
     .filter((id) => id.trim())
     .map((id) => `${siteObj[chosenSite.value]}${id.trim()}`);
 
@@ -133,43 +188,44 @@ const startSpider = async () => {
   message.success(`开始处理，共 ${urlArr.length} 个产品`);
   logMessages.value += `<span class="log-info">开始处理，共 ${urlArr.length} 个产品</span><br/>`;
 
-  // 开始爬虫任务
-  const res = await fetch(serverUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      urls: urlArr,
-      sleepSecond: sleepSecond.value,
-      headless: headless.value,
-    }),
-  }).catch((error) => {
-    message.error(`请求失败: ${error.message}`);
-    inProcess.value = false;
-    eventSource.value = null;
-  });
+  try {
+    // 开始爬虫任务
+    const res = await fetch(`${serverUrl}/doSpider`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        urls: urlArr,
+        sleepSecond: sleepSecond.value,
+        headless: headless.value,
+      }),
+    });
 
-  if (!res) {
-    return;
+    inProcess.value = false;
+    if (!res.ok) {
+      message.error('请求失败');
+      return;
+    }
+    const { taskId } = await res.json();
+    // 创建 SSE 连接
+    const source = new EventSource(`${serverUrl}/sse/${taskId}`);
+    eventSource.value = source;
+    // 处理服务器消息
+    source.onmessage = (event) => {
+      logMessages.value += `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> ${event.data}<br/>`;
+    };
+    // 处理连接错误
+    source.onerror = () => {
+      inProcess.value = false;
+      console.log('连接断开或发生错误!');
+      source.close();
+      eventSource.value = null;
+    };
+  } catch (error) {
+    console.log(error);
+    message.error('发生错误');
   }
-  const { taskId } = await res.json();
-  // 创建 SSE 连接
-  const source = new EventSource(`${serverUrl}/sse/${taskId}`);
-  eventSource.value = source;
-
-  // 处理服务器消息
-  source.onmessage = (event) => {
-    logMessages.value += `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> ${event.data}<br/>`;
-  };
-
-  // 处理连接错误
-  source.onerror = () => {
-    inProcess.value = false;
-    console.log('连接断开或发生错误!');
-    source.close();
-    eventSource.value = null;
-  };
 };
 
 // 清除日志

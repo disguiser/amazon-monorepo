@@ -10,6 +10,7 @@ import {
 import { FastifyReply } from 'fastify';
 import { SpiderService } from './spider.service';
 import { DoSpiderDto } from './dto/do-spider.dto';
+import { SpiderAsinDto } from './dto/spider-asin.dto';
 
 @Controller('spider')
 export class SpiderController {
@@ -61,11 +62,16 @@ export class SpiderController {
     // 开始爬虫任务
   }
 
-  @Post()
+  @Post('doSpider')
   postSpiderData(@Body() doSpiderDto: DoSpiderDto) {
     const taskId = Date.now().toString();
     this.dtoMap.set(taskId, doSpiderDto);
     return { taskId };
+  }
+
+  @Post('spiderAsinFromStoreUrl')
+  spiderAsinFromStoreUrl(@Body() spiderAsinDto: SpiderAsinDto) {
+    return this.spiderService.spiderAsinFromStoreUrl(spiderAsinDto);
   }
 
   @Get('download')
