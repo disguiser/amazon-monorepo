@@ -532,6 +532,20 @@ export class SpiderService {
       this.sendLog('Page load failed: ' + response?.status());
       return;
     }
+
+    let address = await page.$eval('#glow-ingress-line2', (e) =>
+      e.textContent?.trim(),
+    );
+
+    // 等待地址更改
+    while (removeInvisible(address) !== 'Melbourne 3000') {
+      this.sendLog('等待地址更改...');
+      await sleep(2000); // 每2秒检查一次
+      address = await page.$eval('#glow-ingress-line2', (e) =>
+        e.textContent?.trim(),
+      );
+    }
+
     let next,
       asinArr: string[] = [];
 
