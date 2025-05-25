@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
 import { SpiderModule } from './spider/spider.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { DailySpiderService } from './spider/daily-spider.service';
 
 @Module({
   imports: [
@@ -34,8 +36,9 @@ import { SpiderModule } from './spider/spider.module';
     }),
     ProductsModule,
     SpiderModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, DailySpiderService],
 })
 export class AppModule {}
