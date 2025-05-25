@@ -1,13 +1,26 @@
 <template>
-  <div class="app">
-    <n-message-provider>
-      <router-view />
-    </n-message-provider>
-  </div>
+  <suspense>
+    <n-loading-bar-provider>
+      <n-message-provider>
+        <n-notification-provider>
+          <n-modal-provider>
+            <n-dialog-provider>
+              <router-view />
+            </n-dialog-provider>
+          </n-modal-provider>
+        </n-notification-provider>
+      </n-message-provider>
+    </n-loading-bar-provider>
+    <template #fallback> Loading... </template>
+  </suspense>
 </template>
 
 <script lang="ts" setup>
-import { NMessageProvider } from 'naive-ui';
+import {
+  NMessageProvider,
+  NNotificationProvider,
+  NModalProvider,
+  NDialogProvider,
+  NLoadingBarProvider,
+} from 'naive-ui';
 </script>
-
-<style></style>

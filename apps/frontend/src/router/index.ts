@@ -1,18 +1,24 @@
-import { createRouter, createWebHashHistory } from 'vue-router';
-import type { RouteRecordRaw } from 'vue-router';
-import Spider from '../views/Spider.vue';
-
-const routes: Array<RouteRecordRaw> = [
-  {
-    path: '/',
-    name: 'Spider',
-    component: Spider,
-  },
-];
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router';
+import { constantRoutes } from './modules/constantRoutes';
+import { dynamicRouter } from './modules/dynamicRouter';
+import getPageTitle from '@/utils/index';
 
 const router = createRouter({
   history: createWebHashHistory(),
-  routes,
+  routes: constantRoutes,
+});
+let isFirst = true;
+router.beforeEach(async (to, _from, next) => {
+  if (isFirst) {
+    // set page title
+    document.title = getPageTitle(to.meta.title as string);
+    dynamicRouter.forEach((route: RouteRecordRaw) => {
+      router.addRoute('layout', route);
+    });
+    isFirst = false;
+    next({ ...to, replace: true });
+  }
+  next();
 });
 
 export default router;

@@ -49,7 +49,7 @@
               </n-form-item>
 
               <n-input
-                v-model:value="ids"
+                v-model:value="asins"
                 type="textarea"
                 :disabled="inProcess || !chosenSite"
                 placeholder="请输入asin，每行一个"
@@ -107,7 +107,7 @@ const storeUrl = ref('');
 const serverUrl = `${import.meta.env.VITE_APP_BASE_API}/spider`;
 const headless = ref(false);
 const logMessages = ref('');
-const ids = ref('');
+const asins = ref('');
 const sleepSecond = ref(10);
 const chosenSite = ref('');
 const excelUrl = `${serverUrl}/download`;
@@ -156,7 +156,7 @@ const spiderAsinFromStoreUrl = async () => {
 
     inProcess.value = false;
     if (res.ok) {
-      ids.value = await res.text();
+      asins.value = await res.text();
       message.success('ASIN 获取成功！');
       showModel.value = false; // 关闭模态框
     } else {
@@ -169,12 +169,12 @@ const spiderAsinFromStoreUrl = async () => {
 };
 // 发送消息到后端
 const startSpider = async () => {
-  if (!ids.value.trim()) {
+  if (!asins.value.trim()) {
     message.warning('请输入至少一个产品ID');
     return;
   }
-  const set = new Set(ids.value.trim().split('\n'));
-  ids.value = Array.from(set).join(',');
+  const set = new Set(asins.value.trim().split('\n'));
+  asins.value = Array.from(set).join('\n');
   const urlArr = Array.from(set)
     .filter((id) => id.trim())
     .map((id) => `${siteObj[chosenSite.value]}${id.trim()}`);

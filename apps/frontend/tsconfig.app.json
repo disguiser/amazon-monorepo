@@ -11,6 +11,8 @@
     "paths": {
       "@/*": ["./src/*"]
     },
+    "module": "esnext",
+    "moduleResolution": "bundler",
 
     /* --- Linting & Strictness (补充或覆盖 @vue/tsconfig) --- */
     /* 启用所有严格类型检查选项 (通常由 @vue/tsconfig 提供，这里可显式确认) */

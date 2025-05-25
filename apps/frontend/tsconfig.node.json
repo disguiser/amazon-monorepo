@@ -5,7 +5,7 @@
     /* 编译目标 JavaScript 版本 */
     "target": "ES2022",
     /* 指定包含的库文件 (ES2023 API) */
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM"],
     /* 指定生成的 JavaScript 模块类型 (使用现代 ES 模块) */
     "module": "ESNext",
 
@@ -34,9 +34,5 @@
     "noUncheckedSideEffectImports": true
   },
   /* 指定此配置应用于哪些文件 */
-  "include": [
-    "vite.config.ts",
-    "vitest.config.ts", // 如果有 Vitest 配置
-    "cypress.config.ts" // 如果有 Cypress 配置
-  ]
+  "include": ["vite.config.ts"]
 }

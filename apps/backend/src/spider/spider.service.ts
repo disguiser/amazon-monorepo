@@ -1,9 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import puppeteer, {
-  type Browser,
-  type Page,
-  type ElementHandle,
-} from 'puppeteer';
+import puppeteer, { type Browser, type Page } from 'puppeteer';
 import { ConfigService } from '@nestjs/config';
 import { readFile, writeFile, copyFile, stat } from 'fs/promises';
 import xlsx from 'node-xlsx';
@@ -61,7 +57,10 @@ export class SpiderService {
       // executablePath: 指定 Puppeteer 使用的 Chrome/Chromium 可执行文件的路径。
       // 如果该环境变量未设置或为空，则表达式结果为 undefined，
       // 此时 Puppeteer 将使用其默认下载并捆绑的 Chromium 版本。
-      executablePath: (await this.findChromeExecutablePath()) ?? undefined,
+      executablePath:
+        this.configService.get<string>('CHROME_DIR') ||
+        (await this.findChromeExecutablePath()) ||
+        undefined,
     });
 
     this.browser.on('disconnected', () => {
@@ -88,7 +87,9 @@ export class SpiderService {
 
     // 使用puppeteer获取动态加载的内容
     for (const url of urls) {
-      this.sendLog(`------------- ${url} -------------`);
+      this.sendLog(
+        `------------- <a href="${url}" target="_blank">${url}</a> -------------`,
+      );
       try {
         const { title, description, imgs, others, specification } =
           await this.getPuppeteerData(page, url);
@@ -125,7 +126,9 @@ export class SpiderService {
         ];
         // 保存到Excel
         await this.addInExcel(product);
-        this.sendLog('Scraping complete. Results saved to Excel');
+        this.sendLog(
+          `Scraping complete. Results saved to Excel. Sleep for ${sleepSecond}s`,
+        );
         await sleep(sleepSecond * 1000);
       } catch (error) {
         if (error instanceof ScrapingError) {
@@ -159,12 +162,12 @@ export class SpiderService {
       // 等待页面主要内容加载完成
       await page.waitForSelector('#productTitle');
 
-      this.sendLog('Page load complete. Initiating scroll...');
+      this.sendLog('Page load complete.');
 
       // 滚动页面以加载动态内容
-      await this.autoScroll(page);
+      // await this.autoScroll(page);
 
-      this.sendLog('Scroll complete. Extracting content...');
+      this.sendLog('Extracting content...');
 
       // 提取产品标题
       const title = await page.$eval('#productTitle', (el) =>
@@ -207,6 +210,7 @@ export class SpiderService {
    * @param {Page} page Puppeteer页面对象
    */
   async autoScroll(page: Page) {
+    this.sendLog('scrolling');
     await page.evaluate(async () => {
       await new Promise<void>((resolve) => {
         let totalHeight = 0;
@@ -227,6 +231,7 @@ export class SpiderService {
 
     // 等待一段时间，确保动态内容加载完成
     await new Promise((resolve) => setTimeout(resolve, 2000));
+    this.sendLog('Scroll complete.');
   }
 
   async getDescription(page: Page) {
