@@ -201,8 +201,6 @@ const startSpider = async () => {
         headless: headless.value,
       }),
     });
-
-    inProcess.value = false;
     if (!res.ok) {
       message.error('请求失败');
       return;
