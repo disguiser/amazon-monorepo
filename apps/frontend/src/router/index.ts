@@ -16,9 +16,9 @@ router.beforeEach(async (to, _from, next) => {
       router.addRoute('layout', route);
     });
     isFirst = false;
-    next({ ...to, replace: true });
+    return next({ ...to, replace: true });
   }
-  next();
+  return next();
 });
 
 export default router;

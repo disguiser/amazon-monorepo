@@ -19,7 +19,7 @@ export class SpiderController {
   private readonly logger = new Logger(SpiderController.name);
   private dtoMap = new Map<string, DoSpiderDto>();
 
-  @Get('sse/:taskId')
+  @Get('sse')
   async sse(@Res() res: FastifyReply, @Param('taskId') taskId: string) {
     // 设置 SSE 所需的响应头
     res.raw.writeHead(200, {
@@ -29,6 +29,8 @@ export class SpiderController {
       'Access-Control-Allow-Origin': '*', // 允许跨域访问
     });
 
+    // 立即发送一个初始消息，这样客户端的 onopen 就会被触发
+    res.raw.write('data: 连接已建立\n\n');
     // 保持连接不自动关闭
     res.raw.flushHeaders();
 
@@ -48,25 +50,14 @@ export class SpiderController {
       // 关闭连接
       res.raw.end();
     });
-
-    try {
-      await this.spiderService.doSpider(this.dtoMap.get(taskId)!);
-    } catch (error) {
-      // 发送错误信息
-      res.raw.write(`data: 爬虫过程发生错误: ${error.message}\n\n`);
-      // 关闭连接
-      res.raw.end();
-    } finally {
-      this.dtoMap.delete(taskId);
-    }
-    // 开始爬虫任务
   }
 
   @Post('doSpider')
-  postSpiderData(@Body() doSpiderDto: DoSpiderDto) {
-    const taskId = Date.now().toString();
-    this.dtoMap.set(taskId, doSpiderDto);
-    return { taskId };
+  async postSpiderData(@Body() doSpiderDto: DoSpiderDto) {
+    // const taskId = Date.now().toString();
+    // this.dtoMap.set(taskId, doSpiderDto);
+    // return { taskId };
+    await this.spiderService.doSpider(doSpiderDto);
   }
 
   @Post('spiderAsinFromStoreUrl')

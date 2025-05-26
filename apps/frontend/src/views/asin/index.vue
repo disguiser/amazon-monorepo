@@ -44,7 +44,9 @@
                   :disabled="inProcess"
                   :loading="inProcess"
                 >
-                  {{ inProcess ? '处理中...' : '店铺链接自动获取asin' }}
+                  <template #default>
+                    {{ inProcess ? '处理中...' : '店铺链接自动获取asin' }}
+                  </template>
                 </n-button>
               </n-form-item>
 
@@ -134,7 +136,38 @@ const siteObj = sites.reduce(
 );
 const inProcess = ref(false);
 const logContainer = ref<HTMLDivElement | null>(null);
-const eventSource = ref<EventSource | null>(null);
+
+// 创建 SSE 连接
+let eventSource: EventSource | null = null;
+
+const initSSE = () => {
+  return new Promise((resolve, reject) => {
+    eventSource = new EventSource(`${serverUrl}/sse`);
+    eventSource.onopen = () => {
+      console.log('连上了');
+      resolve(eventSource);
+    };
+    // 处理服务器消息
+    eventSource.onmessage = (event) => {
+      logMessages.value += `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> ${event.data}<br/>`;
+    };
+    // 处理连接错误
+    eventSource.onerror = () => {
+      reject();
+      inProcess.value = false;
+      console.log('连接断开');
+      eventSource!.close();
+    };
+  });
+};
+
+// 组件卸载时关闭连接
+onBeforeUnmount(() => {
+  if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+    eventSource.close();
+  }
+  eventSource = null;
+});
 
 const spiderAsinFromStoreUrl = async () => {
   if (!storeUrl.value.trim()) {
@@ -142,7 +175,9 @@ const spiderAsinFromStoreUrl = async () => {
     return;
   }
   try {
+    showModel.value = false;
     inProcess.value = true;
+    await initSSE();
     const res = await fetch(`${serverUrl}/spiderAsinFromStoreUrl`, {
       method: 'POST',
       headers: {
@@ -154,11 +189,10 @@ const spiderAsinFromStoreUrl = async () => {
       }),
     });
 
-    inProcess.value = false;
     if (res.ok) {
       asins.value = await res.text();
       message.success('ASIN 获取成功！');
-      showModel.value = false; // 关闭模态框
+      storeUrl.value = '';
     } else {
       const errorText = await res.text();
       message.error(`获取ASIN失败: ${res.status} - ${errorText || '未知错误'}`);
@@ -190,6 +224,7 @@ const startSpider = async () => {
 
   try {
     // 开始爬虫任务
+    await initSSE();
     const res = await fetch(`${serverUrl}/doSpider`, {
       method: 'POST',
       headers: {
@@ -205,21 +240,6 @@ const startSpider = async () => {
       message.error('请求失败');
       return;
     }
-    const { taskId } = await res.json();
-    // 创建 SSE 连接
-    const source = new EventSource(`${serverUrl}/sse/${taskId}`);
-    eventSource.value = source;
-    // 处理服务器消息
-    source.onmessage = (event) => {
-      logMessages.value += `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> ${event.data}<br/>`;
-    };
-    // 处理连接错误
-    source.onerror = () => {
-      inProcess.value = false;
-      console.log('连接断开或发生错误!');
-      source.close();
-      eventSource.value = null;
-    };
   } catch (error) {
     console.log(error);
     message.error('发生错误');
@@ -231,14 +251,6 @@ const clearLog = () => {
   logMessages.value = '';
   message.info('日志已清空');
 };
-
-// 组件卸载时关闭连接
-onBeforeUnmount(() => {
-  if (eventSource.value) {
-    eventSource.value.close();
-    eventSource.value = null;
-  }
-});
 
 // 监听 logMessages 的变化
 watch(logMessages, async () => {

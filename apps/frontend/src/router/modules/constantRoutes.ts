@@ -1,5 +1,4 @@
 import type { RouteRecordRaw } from 'vue-router';
-import Layout from '@/layout/index.vue';
 
 /**
  * constantRoutes
@@ -28,7 +27,7 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: '/layout',
     name: 'layout',
-    component: Layout,
+    component: () => import('@/layout/index.vue'),
     redirect: '/spider',
     children: [],
   },

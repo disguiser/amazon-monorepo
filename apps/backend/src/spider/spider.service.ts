@@ -81,66 +81,71 @@ export class SpiderService {
    * @param {string} url 产品页面URL
    */
   async doSpider({ urls, headless, sleepSecond }: DoSpiderDto) {
-    const page = await this.launchBrowser(headless);
+    try {
+      const page = await this.launchBrowser(headless);
 
-    this.sendLog('Browser launched successfully');
+      this.sendLog('Browser launched successfully');
 
-    // 使用puppeteer获取动态加载的内容
-    for (const url of urls) {
-      this.sendLog(
-        `------------- <a href="${url}" target="_blank">${url}</a> -------------`,
-      );
-      try {
-        const { title, description, imgs, others, specification } =
-          await this.getPuppeteerData(page, url);
-        const nineImgsArr = [...imgs, ...new Array(9 - imgs.length).fill('')];
-        // 构建产品数据
-        const product = [
-          '',
-          title,
-          description,
-          '',
-          '',
-          specification?.specName,
-          specification?.specValue,
-          specification ? nineImgsArr[0] : '',
-          '',
-          '',
-          '10',
-          '10',
-          url,
-          ...nineImgsArr,
-          '',
-          '',
-          others['Item Weight'] ? others['Item Weight'] : others['Weight'],
-          others['L'],
-          others['W'],
-          others['H'],
-          '2',
-          '0',
-          '',
-          '中国大陆',
-          '无保修',
-          others['Colour'],
-          others['Material'],
-        ];
-        // 保存到Excel
-        await this.addInExcel(product);
+      // 使用puppeteer获取动态加载的内容
+      for (const url of urls) {
         this.sendLog(
-          `Scraping complete. Results saved to Excel. Sleep for ${sleepSecond}s`,
+          `------------- <a href="${url}" target="_blank">${url}</a> -------------`,
         );
-        await sleep(sleepSecond * 1000);
-      } catch (error) {
-        if (error instanceof ScrapingError) {
-          this.sendLog('Error during Puppeteer scraping.');
-        } else {
-          this.sendLog('Error adding product to Excel');
+        try {
+          const { title, description, imgs, others, specification } =
+            await this.getPuppeteerData(page, url);
+          const nineImgsArr = [...imgs, ...new Array(9 - imgs.length).fill('')];
+          // 构建产品数据
+          const product = [
+            '',
+            title,
+            description,
+            '',
+            '',
+            specification?.specName,
+            specification?.specValue,
+            specification ? nineImgsArr[0] : '',
+            '',
+            '',
+            '10',
+            '10',
+            url,
+            ...nineImgsArr,
+            '',
+            '',
+            others['Item Weight'] ? others['Item Weight'] : others['Weight'],
+            others['L'],
+            others['W'],
+            others['H'],
+            '2',
+            '0',
+            '',
+            '中国大陆',
+            '无保修',
+            others['Colour'],
+            others['Material'],
+          ];
+          // 保存到Excel
+          await this.addInExcel(product);
+          this.sendLog(
+            `Scraping complete. Results saved to Excel. Sleep for ${sleepSecond}s`,
+          );
+          await sleep(sleepSecond * 1000);
+        } catch (error) {
+          if (error instanceof ScrapingError) {
+            this.sendLog('Error during Puppeteer scraping.');
+          } else {
+            this.sendLog('Error adding product to Excel');
+          }
+          console.error(error);
+          continue;
         }
-        console.error(error);
-        continue;
       }
+      await this.browser?.close();
+    } catch (error) {
+      // 发送错误信息
+      this.sendLog(`爬虫过程发生错误: ${error.message}`);
     }
-    await this.browser?.close();
   }
 
   /**
