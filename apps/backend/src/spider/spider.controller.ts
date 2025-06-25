@@ -17,10 +17,9 @@ export class SpiderController {
   constructor(private readonly spiderService: SpiderService) {}
 
   private readonly logger = new Logger(SpiderController.name);
-  private dtoMap = new Map<string, DoSpiderDto>();
 
   @Get('sse')
-  async sse(@Res() res: FastifyReply, @Param('taskId') taskId: string) {
+  async sse(@Res() res: FastifyReply) {
     // 设置 SSE 所需的响应头
     res.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
