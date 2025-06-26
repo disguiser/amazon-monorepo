@@ -13,7 +13,7 @@ pinia.use(piniaPluginPersistedstate);
 app.use(pinia);
 
 import 'modern-normalize/modern-normalize.css';
-
+import 'virtual:uno.css'
 import './styles/global.css';
 
 // 通用字体

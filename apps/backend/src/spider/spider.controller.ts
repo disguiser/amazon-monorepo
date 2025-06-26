@@ -83,4 +83,9 @@ export class SpiderController {
       reply.code(500).send({ error: '文件读取失败' });
     }
   }
+
+  @Get('daily')
+  async daily() {
+    await this.spiderService.daily();
+  }
 }

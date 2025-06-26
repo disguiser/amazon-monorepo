@@ -6,7 +6,8 @@ import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
 import { SpiderModule } from './spider/spider.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { DailySpiderService } from './spider/daily-spider.service';
+import { RankingSnapshotModule } from './ranking-snapshot/ranking-snapshot.module';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DailySpiderService } from './spider/daily-spider.service';
           database: configService.get<string>('DB_DATABASE'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: configService.get<string>('NODE_ENV') !== 'production',
+          namingStrategy: new SnakeNamingStrategy(), // 使用下划线命名策略
         };
       },
       inject: [ConfigService],
@@ -37,8 +39,9 @@ import { DailySpiderService } from './spider/daily-spider.service';
     ProductsModule,
     SpiderModule,
     ScheduleModule.forRoot(),
+    RankingSnapshotModule,
   ],
   controllers: [AppController],
-  providers: [AppService, DailySpiderService],
+  providers: [AppService],
 })
 export class AppModule {}

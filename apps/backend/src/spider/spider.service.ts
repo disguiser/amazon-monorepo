@@ -11,6 +11,10 @@ import { execSync } from 'child_process';
 import { checkFileExists } from 'src/utils';
 import { join } from 'path';
 import { SpiderAsinDto } from './dto/spider-asin.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { RankingSnapshot } from '../ranking-snapshot/entities/ranking-snapshot.entity';
+import { RankingItem } from '@amazon-monorepo/shared';
+import { Repository } from 'typeorm';
 
 // 自定义错误类
 class ScrapingError extends Error {
@@ -28,7 +32,11 @@ export class SpiderService {
   private readonly logger = new Logger(SpiderService.name);
   private excelDir: string | undefined;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    @InjectRepository(RankingSnapshot)
+    private readonly rankingRepository: Repository<RankingSnapshot>,
+    private readonly configService: ConfigService
+  ) {
     this.excelDir = this.configService.get<string>('EXCEL_DIR');
   }
 
@@ -40,7 +48,7 @@ export class SpiderService {
     this.sendLog = fn;
   }
 
-  async launchBrowser(headless: boolean) {
+  async launchBrowser(headless: boolean, sorftime?: boolean) {
     this.browser = await puppeteer.launch({
       headless, // false表示显示浏览器窗口
       userDataDir: this.configService.get<string>('CHROME_USER_DATA_DIR'), // 用户目录,会缓存cookie
@@ -52,6 +60,7 @@ export class SpiderService {
         // 通常与 --no-sandbox 一起在 Linux 系统上使用，以解决沙箱相关的启动问题。
         '--disable-setuid-sandbox',
         '--start-maximized',
+        sorftime ? `--disable-extensions-except=${this.configService.get<string>('SORFTIME_SAVE_PATH')}` : ''
       ],
       defaultViewport: null,
       // executablePath: 指定 Puppeteer 使用的 Chrome/Chromium 可执行文件的路径。
@@ -219,7 +228,7 @@ export class SpiderService {
     await page.evaluate(async () => {
       await new Promise<void>((resolve) => {
         let totalHeight = 0;
-        const distance = 100;
+        const distance = 50;
         const timer = setInterval(() => {
           const scrollHeight = document.body.scrollHeight;
           window.scrollBy(0, distance);
@@ -575,5 +584,86 @@ export class SpiderService {
     this.logger.log(`Found ${asinArr.length} ASINs: ${asinArr.join(', ')}`);
     await this.browser?.close();
     return asinArr.join('\n');
+  }
+
+  async spiderRanking(page) {
+      return page.$$eval('#gridItemRoot', (els: Element[]) => els.map(e => {
+      const rank = e.querySelector('.zg-bdg-text')!.textContent!;
+      console.log('rank', rank);
+      const _1 = e.querySelector('.p13n-sc-uncoverable-faceout')!.children[1].children[0]
+      let title,price;
+      if (_1.children.length === 1) {
+        title = _1.children[0].textContent;
+        console.log('title', title);
+      } else {
+        const text = _1.children[1].textContent!;
+        if (/\$\d+\.\d{2}/.test(text)) {
+          price = parseFloat(text.substring(1));
+          console.log('price', price);
+        }
+      }
+      const _rate = e.querySelector('.a-icon-alt');
+      let rate;
+      if (_rate) {
+        rate = parseFloat(_rate.textContent!.split(' ')[0]);
+        console.log('rate', rate);
+      }
+      let rateCount;
+      const _rateCount = e.querySelector('.a-size-small')
+      if (_rateCount) {
+        rateCount = parseInt(_rateCount.textContent!);
+        console.log('rateCount', rateCount);
+      }
+      const asin = e.querySelector('.asinBoard-box__text.asinBoard-box__top')!.textContent!.trim();
+      console.log('asin', asin);
+      const sorftimeSaveBox = e.querySelector('.asinBoard-box')!.children[3].children[0].children;
+      // listing 月销量
+      const listingSales = sorftimeSaveBox[0].querySelector('.blue')?.textContent?.trim();
+      console.log('listingSales', listingSales);
+      // asin 月销量
+      const asinSales = sorftimeSaveBox[1].querySelector('.blue')?.textContent?.trim();
+      console.log('asinSales', asinSales);
+      // 销售额
+      const revenus = sorftimeSaveBox[2].querySelector('.blue')?.textContent?.replaceAll(/\s*/g, '');
+      console.log('revenus', revenus);
+      // 品牌
+      const brand = e.querySelector('.fbold.brand-box')?.textContent?.trim();
+      // console.log('brand', brand);
+      // 卖家 需要实测
+      const seller = e.querySelector('.seller-box')?.textContent?.trim();
+      console.log('seller', seller);
+      return {
+        rank,
+        asin,
+        imgUrl: e.querySelector('img')!.src,
+        title,
+        rate,
+        rateCount,
+        price,
+        listingSales,
+        asinSales,
+        revenus,
+        brand,
+        seller
+      }
+    }))
+  }
+
+  async daily() {
+    const page = await this.launchBrowser(false, true);
+    await page.goto('https://www.amazon.com.au/gp/bestsellers/kitchen/5017253051');
+    await this.autoScroll(page);
+    const data1: RankingItem[] = await this.spiderRanking(page);
+    page.evaluate(async () => {
+      (document.querySelector('.a-normal')!.children[0] as HTMLAnchorElement).click()
+    })
+    await sleep(5000);
+    await this.autoScroll(page);
+    const data2: RankingItem[] = await this.spiderRanking(page);
+    await this.browser?.close();
+    const newRanking = this.rankingRepository.create({
+      data: data1.concat(data2)
+    })
+    return this.rankingRepository.save(newRanking);
   }
 }
